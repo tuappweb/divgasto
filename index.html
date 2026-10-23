@@ -57,20 +57,27 @@
       border: none;
       display: block;
     }
+    /* Botón de pantalla completa: abajo a la izquierda, sobre la barra de gestos */
     #btnPantallaCompleta {
       position: fixed;
-      bottom: 16px;
-      right: 16px;
+      left: calc(14px + env(safe-area-inset-left, 0px));
+      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
       z-index: 10;
-      background: #5B2A91; /* morado de DivGasto */
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      background: rgba(63, 25, 100, .88); /* morado de DivGasto */
       color: #fff;
       border: none;
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-size: 14px;
-      font-family: system-ui, -apple-system, sans-serif;
+      border-radius: 50%;
       box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      cursor: pointer;
     }
+    #btnPantallaCompleta svg { width: 22px; height: 22px; }
+    #btnPantallaCompleta:focus-visible { outline: 3px solid #C9B3F5; outline-offset: 2px; }
+    #btnPantallaCompleta[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -84,29 +91,39 @@
       allow="fullscreen; clipboard-write"
     ></iframe>
   </div>
+  <button id="btnPantallaCompleta" type="button" onclick="alternarPantallaCompleta()" aria-label="Ver en pantalla completa" title="Pantalla completa" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+    </svg>
+  </button>
+
   <script>
-    function entrarPantallaCompleta() {
-      const iframe = document.getElementById('miIframe');
-      const solicitar = iframe.requestFullscreen || iframe.webkitRequestFullscreen || iframe.msRequestFullscreen;
+    const btn = document.getElementById('btnPantallaCompleta');
+    const raiz = document.documentElement;
+    const pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
+    const salir = document.exitFullscreen || document.webkitExitFullscreen;
+    const enPantallaCompleta = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 
-      if (!solicitar) {
-        // Pasa sobre todo en navegadores embebidos (in-app de Instagram,
-        // WhatsApp, etc.) y en versiones viejas de iOS Safari, que no
-        // soportan la Fullscreen API para elementos que no sean <video>.
-        alert('Este navegador no permite pantalla completa acá — igual la página se ve completa en la pantalla, solo que con la barra del navegador visible.');
-        return;
-      }
+    // Abierta desde el acceso directo (ya está en pantalla completa / modo app)
+    const comoApp = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches
+                 || window.navigator.standalone === true;
 
-      const btn = document.getElementById('btnPantallaCompleta');
-      solicitar.call(iframe)
-        .then(() => { if (btn) btn.style.display = 'none'; })
-        .catch(err => console.error('Error al activar pantalla completa: ' + err.message));
+    // Se muestra el botón solo donde sirve: el navegador permite pantalla completa
+    // (el iPhone no lo permite para páginas; el iPad y Android sí) y no se abrió como app.
+    function actualizarBoton() {
+      btn.hidden = !pedir || comoApp || enPantallaCompleta();
     }
 
-    document.addEventListener('fullscreenchange', () => {
-      const btn = document.getElementById('btnPantallaCompleta');
-      if (!document.fullscreenElement && btn) btn.style.display = 'block';
-    });
+    function alternarPantallaCompleta() {
+      if (enPantallaCompleta()) { if (salir) salir.call(document); return; }
+      if (!pedir) return;
+      const r = pedir.call(raiz, { navigationUI: 'hide' });
+      if (r && r.catch) r.catch(err => console.error('No se pudo activar pantalla completa: ' + err.message));
+    }
+
+    document.addEventListener('fullscreenchange', actualizarBoton);
+    document.addEventListener('webkitfullscreenchange', actualizarBoton);
+    actualizarBoton();
   </script>
 
 </body>
