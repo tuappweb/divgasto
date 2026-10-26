@@ -85,14 +85,21 @@
   <div id="contenedorIframe">
     <iframe
       id="miIframe"
-      src="https://script.google.com/macros/s/AKfycbyqRkF9nRhhlgucaciawipfQg5nEyWV72RdG2ALNp_5s_msnQVc_lBuoudRPvBtps1ufg/exec"
       title="DivGasto"
       allowfullscreen
-      allow="fullscreen; clipboard-write"
+      allow="fullscreen; clipboard-write; web-share"
     ></iframe>
   </div>
-
   <script>
+    // Dirección de la app web de Apps Script (/exec)
+    const URL_APP = 'https://script.google.com/macros/s/AKfycbyqRkF9nRhhlgucaciawipfQg5nEyWV72RdG2ALNp_5s_msnQVc_lBuoudRPvBtps1ufg/exec';
+
+    // Si se abrió un enlace de invitación (ej: .../?invite=KQWRTZMB), se le pasa el código a la app
+    (function () {
+      const invite = (new URLSearchParams(location.search).get('invite') || '').toUpperCase().replace(/[^A-Z]/g, '');
+      document.getElementById('miIframe').src = URL_APP + (invite ? '?invite=' + invite : '');
+    })();
+
     const btn = document.getElementById('btnPantallaCompleta');
     const raiz = document.documentElement;
     const pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
