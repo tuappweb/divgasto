@@ -57,27 +57,6 @@
       border: none;
       display: block;
     }
-    /* Botón de pantalla completa: abajo a la izquierda, sobre la barra de gestos */
-    #btnPantallaCompleta {
-      position: fixed;
-      left: calc(14px + env(safe-area-inset-left, 0px));
-      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-      z-index: 10;
-      width: 44px;
-      height: 44px;
-      display: grid;
-      place-items: center;
-      padding: 0;
-      background: rgba(63, 25, 100, .88); /* morado de DivGasto */
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      box-shadow: 0 2px 10px rgba(0,0,0,.25);
-      cursor: pointer;
-    }
-    #btnPantallaCompleta svg { width: 22px; height: 22px; }
-    #btnPantallaCompleta:focus-visible { outline: 3px solid #C9B3F5; outline-offset: 2px; }
-    #btnPantallaCompleta[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -90,6 +69,7 @@
       allow="fullscreen; clipboard-write; web-share"
     ></iframe>
   </div>
+
   <script>
     // Dirección de la app web de Apps Script (/exec)
     const URL_APP = 'https://script.google.com/macros/s/AKfycbyqRkF9nRhhlgucaciawipfQg5nEyWV72RdG2ALNp_5s_msnQVc_lBuoudRPvBtps1ufg/exec';
@@ -100,32 +80,27 @@
       document.getElementById('miIframe').src = URL_APP + (invite ? '?invite=' + invite : '');
     })();
 
-    const btn = document.getElementById('btnPantallaCompleta');
-    const raiz = document.documentElement;
-    const pedir = raiz.requestFullscreen || raiz.webkitRequestFullscreen;
-    const salir = document.exitFullscreen || document.webkitExitFullscreen;
-    const enPantallaCompleta = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    /*
+     * Guarda la sesión de DivGasto en ESTA página (tu dominio).
+     * En iPhone, la app dentro del iframe de Google no puede conservar la sesión por sí sola,
+     * así que le pide y le entrega el "token" a esta página por postMessage.
+     * Solo se aceptan mensajes que vienen de la app (dominio googleusercontent.com de Apps Script).
+     */
+    const CLAVE_SESION = 'divgasto_token';
+    window.addEventListener('message', ev => {
+      const d = ev.data;
+      if (!d || !d.divgasto || !/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.googleusercontent\.com$/.test(ev.origin)) return;
+      try {
+        if (d.tipo === 'pedirToken') {
+          ev.source.postMessage({ divgasto: true, tipo: 'token', token: localStorage.getItem(CLAVE_SESION) || '' }, ev.origin);
+        } else if (d.tipo === 'guardarToken' && typeof d.token === 'string' && d.token.length < 200) {
+          localStorage.setItem(CLAVE_SESION, d.token);
+        } else if (d.tipo === 'borrarToken') {
+          localStorage.removeItem(CLAVE_SESION);
+        }
+      } catch (e) { /* almacenamiento no disponible (ej: modo privado) */ }
+    });
 
-    // Abierta desde el acceso directo (ya está en pantalla completa / modo app)
-    const comoApp = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches
-                 || window.navigator.standalone === true;
-
-    // Se muestra el botón solo donde sirve: el navegador permite pantalla completa
-    // (el iPhone no lo permite para páginas; el iPad y Android sí) y no se abrió como app.
-    function actualizarBoton() {
-      btn.hidden = !pedir || comoApp || enPantallaCompleta();
-    }
-
-    function alternarPantallaCompleta() {
-      if (enPantallaCompleta()) { if (salir) salir.call(document); return; }
-      if (!pedir) return;
-      const r = pedir.call(raiz, { navigationUI: 'hide' });
-      if (r && r.catch) r.catch(err => console.error('No se pudo activar pantalla completa: ' + err.message));
-    }
-
-    document.addEventListener('fullscreenchange', actualizarBoton);
-    document.addEventListener('webkitfullscreenchange', actualizarBoton);
-    actualizarBoton();
   </script>
 
 </body>
